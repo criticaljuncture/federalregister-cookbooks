@@ -10,10 +10,11 @@ include_recipe "apache2"
 # add appropriate vhosts
 node[:apache][:vhosts].each do |vhost|
   template "#{node[:apache][:dir]}/sites-available/#{vhost}" do
-    source "#{vhost}.conf.erb"
+    source "#{node[:app][vhost][:conf_file]}.conf.erb"
     owner "root"
     group "root"
     mode 0644
+    variables :vhost => vhost
     notifies :restart, resources(service: "apache2")
   end
   
@@ -42,4 +43,3 @@ cookbook_file "#{node[:apache][:dir]}/conf.d/log_formats.conf" do
   action :create
   notifies :restart, resources(service: "apache2")
 end
-

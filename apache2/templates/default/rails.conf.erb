@@ -1,10 +1,13 @@
-<VirtualHost *:<%= node[:app]['federalregister-web'][:port] %>>
-  ServerName <%= node[:app]['federalregister-web'][:fqdn] %>
+<VirtualHost *'<%= node['app'][@vhost]['port'] %>>
+  ServerName <%= node['app'][@vhost]['fqdn'] %>
   ServerAlias
-  DocumentRoot <%= node[:app]['federalregister-web'][:docroot] %>
+  DocumentRoot <%= node['app'][@vhost]['docroot'] %>
   RewriteEngine On
 
-  <Directory <%= node[:app]['federalregister-web'][:docroot] %>>
+  RackEnv <%= node['rails']['env'] %>
+  RailsEnv <%= node['rails']['env'] %>
+
+  <Directory <%= node['app'][@vhost]['docroot'] %>>
     Options FollowSymLinks
     AllowOverride None
     Order allow,deny
@@ -25,11 +28,11 @@
   </Location>
 
   LogLevel info
-  ErrorLog <%= node[:apache][:log_dir] %>/federalregister-web-error.log
-  CustomLog <%= node[:apache][:log_dir] %>/federalregister-web-access.log fr_custom
+  ErrorLog <%= node['apache']['log_dir'] %>/<%= @vhost %>-error.log
+  CustomLog <%= node['apache']['log_dir'] %>/<%= @vhost %>-access.log fr_custom
 
   RewriteEngine On
-  RewriteLog <%= node[:apache][:log_dir] %>/fr-rewrite.log
+  RewriteLog <%= node['apache']['log_dir'] %>/<%= @vhost %>-rewrite.log
   RewriteLogLevel 0
 
   RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
