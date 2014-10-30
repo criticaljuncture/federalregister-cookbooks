@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: apache2::federalregister
+# Cookbook Name:: apache2_federalregister
 # Recipe:: default
 #
 
