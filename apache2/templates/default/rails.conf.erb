@@ -4,8 +4,8 @@
   DocumentRoot <%= node['app'][@vhost]['docroot'] %>
   RewriteEngine On
 
-  RackEnv <%= node['rails']['env'] %>
-  RailsEnv <%= node['rails']['env'] %>
+  RackEnv <%= node['rails']['environment'] %>
+  RailsEnv <%= node['rails']['environment'] %>
 
   <Directory <%= node['app'][@vhost]['docroot'] %>>
     Options FollowSymLinks
