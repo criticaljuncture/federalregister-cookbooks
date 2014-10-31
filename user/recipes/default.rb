@@ -40,7 +40,7 @@ Array(user_array).each do |i|
         content private_key
         owner username
         group username
-        mode '640'
+        mode '600'
       end
     end
   end
