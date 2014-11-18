@@ -10,8 +10,9 @@
   sharedscripts
   postrotate
     service nginx reload > /dev/null 2>&1 || true
-
+  endscript
+  lastaction
     INSTANCE_ID=`curl --silent http://169.254.169.254/latest/meta-data/instance-id`
-    <%= @s3cmd %> sync <%= @log_path %>.gz s3://<%= @bucket %>/${INSTANCE_ID}/<%= @name %>/
+    <%= @s3cmd %> sync <%= @log_path %>-*.gz s3://<%= @bucket %>/${INSTANCE_ID}/<%= @name %>/ 2>&1 | sed "s/^/[$(date)] /" >> /var/log/s3-logrotate.log
   endscript
 }
