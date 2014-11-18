@@ -28,7 +28,7 @@ node['user']['user_array_node_attr'].split("/").each do |hash_key|
   user_array = user_array.send(:[], hash_key)
 end
 
-# use our array of users to upload ssh private keys if specified
+# use our array of users to upload ssh private keys and profiles if specified
 Array(user_array).each do |i|
   u = data_bag_item(bag, i.gsub(/[.]/, '-'))
   username = u['username'] || u['id']
@@ -36,12 +36,20 @@ Array(user_array).each do |i|
 
   if u['ssh_private_keys']
     Array(u['ssh_private_keys']).each do |private_key|
-      file "#{home_dir}/.ssh/id_rsa" do
-        content private_key
+      file "#{home_dir}/.ssh/#{private_key['name']}" do
+        content private_key['content']
         owner username
         group username
         mode '600'
       end
+    end
+  end
+
+  if u['bash_profile']
+    user_federalregister_bash_profile "#{home_dir}/.bash_profile" do
+      user username
+      group username
+      content u['bash_profile']
     end
   end
 end
