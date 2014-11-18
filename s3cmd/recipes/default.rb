@@ -17,10 +17,15 @@
 # limitations under the License.
 #
 
+chef_gem "chef-rewind"
+require 'chef/rewind'
+
 credentials_bag_name = node['s3cmd']['credentials_data_bag_name']
 credential_keys = data_bag(credentials_bag_name)
 
 include_recipe 's3cmd'
+
+unwind "template[s3cfg]"
 
 node['s3cmd']['users'].each do |user|
   home = user == 'root' ? "/root" : "/home/#{user}"
