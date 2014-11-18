@@ -1,0 +1,9 @@
+<%= node['rails']['environment'] %>:
+  adapter: <%= @config['database']['adapter'] %>
+  host: <%= @config['database']['host'] %>
+  port: <%= @config['database']['port'] %>
+  database: <%= @config['database']['name'] %>
+  encoding: utf8
+  reconnect: true
+  username: <%= @config['database']['username'] %>
+  password: <%= @config['database']['password'] %>
