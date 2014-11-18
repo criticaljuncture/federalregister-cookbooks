@@ -29,7 +29,7 @@ node[:apache][:vhosts].each do |vhost|
     variables :vhost => vhost
     notifies :restart, resources(service: "apache2")
   end
-  
+
   apache_site vhost do
     action :enable
   end
@@ -54,4 +54,25 @@ cookbook_file "#{node[:apache][:dir]}/conf.d/log_formats.conf" do
   mode 0644
   action :create
   notifies :restart, resources(service: "apache2")
+end
+
+# remove defaults
+%w(000-default default-ssl).each do |site|
+  apache_site site do
+    enable :false
+  end
+end
+
+# ensure apache is reloaded before we remove the default files next
+service "apache2" do
+  action :reload
+end
+
+%w(
+  /var/www/index.html
+  /etc/apache2/sites-available/default
+  /etc/apache2/sites-available/default-ssl).each do |path|
+    file path do
+      action :delete
+    end
 end
