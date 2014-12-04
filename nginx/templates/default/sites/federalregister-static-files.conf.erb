@@ -1,0 +1,44 @@
+server {
+  listen <%= @site['listen_port'] %>;
+  server_name <%= @site['hostnames'].join(' ') %>;
+
+  access_log <%= node['nginx']['log_dir'] %>/<%= @site['name'] %>/access.log;
+  error_log <%= node['nginx']['log_dir'] %>/<%= @site['name'] %>/error.log;
+
+  <% @site['location_blocks'].each do |block| %>
+    location <%= block['location'] %> {
+      client_max_body_size <%= block['client_max_body_size'] %>;
+
+      # doc root
+      root <%= block['doc_root'] %>;
+
+      # set cache control
+      expires 1y;
+
+      <%- if block['headers'] %>
+        <%- block['headers'].each do |header| %>
+      add_header <%= header %>;
+        <%- end %>
+      <%- end %>
+
+      # If the file exists as a static file serve it directly without
+      # running all the other rewrite tests on it
+      if (-f $request_filename) {
+        break;
+      }
+    }
+  <% end %>
+
+  error_page 500  /500_static.html;
+  location = /500_static.html {
+    root <%= @site['errors_doc_root'] %>;
+  }
+  error_page 404  /404_static.html;
+  location = /404_static.html {
+    root <%= @site['errors_doc_root'] %>;
+  }
+  error_page 403  /403_static.html;
+  location = /403_static.html {
+    root <%= @site['errors_doc_root'] %>;
+  }
+}
