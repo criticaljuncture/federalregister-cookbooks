@@ -18,27 +18,43 @@
 # run default setup
 include_recipe "apache2"
 
+# create directory for basic auth
+directory node['apache2']['htpasswd_dir'] do
+  mode 0755
+  action :create
+end
 
 # add appropriate vhosts
 node[:apache][:vhosts].each do |vhost|
+  vhost_data_bag_item = data_bag_item('applications', vhost)[node.chef_environment]
+
   template "#{node[:apache][:dir]}/sites-available/#{vhost}" do
     source "#{node[:app][vhost][:conf_file]}.conf.erb"
     owner "root"
     group "root"
     mode 0644
-    variables :vhost => vhost
+    variables vhost: vhost,
+      vhost_data_bag_item: vhost_data_bag_item
     notifies :restart, resources(service: "apache2")
+  end
+
+  # create a user/pass combo if provided
+  if node['app'][vhost]['http_basic']
+    http_basic = vhost_data_bag_item['http_basic']
+
+    htpasswd_options = ["-b"] #batch
+    unless File.exists?(node['apache2']['htpasswd_file'])
+      htpasswd_options << "c" #create file
+    end
+
+    execute "create basic auth username/password for #{http_basic['username']}" do
+      command "htpasswd #{htpasswd_options.join('')} #{node['apache2']['htpasswd_file']} #{http_basic['username']} #{http_basic['password']}"
+    end
   end
 
   apache_site vhost do
     action :enable
   end
-end
-
-# create directory for basic auth
-directory '/etc/apache2/passwd' do
-  mode 0755
-  action :create
 end
 
 node[:apache][:enable_modules].each do |mod|
