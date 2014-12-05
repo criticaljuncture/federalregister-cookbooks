@@ -75,7 +75,7 @@ end
 # remove defaults
 %w(000-default default-ssl).each do |site|
   apache_site site do
-    enable :false
+    enable false
   end
 end
 
