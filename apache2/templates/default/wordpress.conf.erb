@@ -1,0 +1,44 @@
+<VirtualHost *:<%= node['app'][@vhost]['port'] %>>
+  ServerName <%= node['app'][@vhost]['fqdn'] %>
+  ServerAlias
+  DocumentRoot <%= node['app'][@vhost]['docroot'] %>
+  RewriteEngine On
+
+  <Directory <%= node['app'][@vhost]['docroot'] %>>
+    Options FollowSymLinks
+    AllowOverride all
+    Order allow,deny
+    Allow from all
+
+    ErrorDocument 403 /blog/errors/403.html
+    ErrorDocument 404 /blog/errors/404.html
+    ErrorDocument 500 /blog/errors/500.html
+    ErrorDocument 502 /blog/errors/502_503.html
+    ErrorDocument 503 /blog/errors/502_503.html
+  </Directory>
+
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+
+  <Directory <%= node['app'][@vhost]['docroot'] %>/blog/wp-admin>
+    AuthType Basic
+    AuthName "Restricted Access"
+    AuthUserFile <%= node['apache2']['htpasswd_dir'] %>
+    Require user <%= @vhost_data_bag_item['http_basic']['username'] %>
+  </Directory>
+
+  LogLevel info
+  ErrorLog <%= node['apache']['log_dir'] %>/<%= @vhost %>-error.log
+  CustomLog <%= node['apache']['log_dir'] %>/<%= @vhost %>-access.log fr_custom
+
+  RewriteEngine On
+  RewriteLog <%= node['apache']['log_dir'] %>/<%= @vhost %>-rewrite.log
+  RewriteLogLevel 0
+
+  RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
+  RewriteCond %{SCRIPT_FILENAME} !maintenance.html
+  RewriteRule ^.*$ /system/maintenance.html [L]
+</VirtualHost>
+
