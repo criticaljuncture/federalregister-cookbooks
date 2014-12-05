@@ -1,0 +1,1 @@
+default['redis']['daemonize'] = 'no'
