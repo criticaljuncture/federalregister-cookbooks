@@ -42,7 +42,7 @@ node[:federalregister][:applications].each do |application_name|
 
   if app_config['config_files']
     app_config['config_files'].each do |filename|
-      template "#{repository_config['directory']}/config/#{filename}" do
+      template "#{[repository_config['directory'], app_config['config']['relative_path'], filename].join('/')}" do
         source "#{filename}.erb"
         variables :config => app_config
         user repository_config['owner']
