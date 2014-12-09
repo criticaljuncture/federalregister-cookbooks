@@ -1,0 +1,17 @@
+description "node.js <%= @name %> server"
+
+start on started mountall
+stop on shutdown
+
+script
+    export HOME="<%= @user_home %>"
+    exec start-stop-daemon --start --make-pidfile --pidfile /var/run/<%= @name %>.pid --chuid <%= @user %> --startas <%= @script %> <%= @args %> >> /var/log/<%= @name %>.log 2>&1
+end script
+
+post-start script
+    sudo -u <%= @user %> echo "[`date -u +%Y-%m-%dT%T.%3NZ`] (re)started" >> /var/log/<%= @name %>.log 2>&1
+end script
+
+pre-stop script
+    sudo -u <%= @user %> echo "[`date -u +%Y-%m-%dT%T.%3NZ`] (sys) Stopping" >> /var/log/<%= @name %>.log
+end script
