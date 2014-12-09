@@ -1,0 +1,16 @@
+# Password to use for basic authentication
+password: <%= @config['password'] %>
+
+# Path to resque config file
+resque:
+  config_path: <%= @config['config_path'] %>
+  environment: <%= @config['environment'] %>
+  <%- if @config['namespace'] %>
+  namespace: <%= @config['namespace'] %>
+  <%- end %>
+
+<%- if @config['scheduler'] %>
+#Resque-scheduler config
+scheduler:
+  config_path: <%= @config['scheduler']['config_path'] %> #/u/apps/myapp/current/config/scheduler.yml
+<%- end %>
