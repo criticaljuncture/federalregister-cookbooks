@@ -44,3 +44,12 @@ monit_check 'redis' do
   stop "/bin/bash -c 'echo SHUTDOWN | /usr/local/bin/redis-cli'"
   tests node['monit']['redis']['tests']
 end
+
+monit_check 'iodocs' do
+  check_type 'process'
+  check_id '/var/run/iodocs.pid'
+  group 'iodocs'
+  start "/sbin/start iodocs"
+  stop "/sbin/start iodocs"
+  tests node['monit']['iodocs']['tests']
+end
