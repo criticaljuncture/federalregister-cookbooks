@@ -1,0 +1,15 @@
+<%= @log_path %> {
+  <%= @interval %>
+  dateext
+  missingok
+  rotate <%= @keep_for %>
+  copytruncate
+  notifempty
+  compress
+  sharedscripts
+  lastaction
+    INSTANCE_ID=`curl --silent http://169.254.169.254/latest/meta-data/instance-id`
+    <%= @s3cmd %> sync <%= @log_path %>-*.gz s3://<%= @bucket %>/${INSTANCE_ID}/<%= @name %>/ 2>&1 | sed "s/^/[$(date)] /" >> /var/log/s3-logrotate.log
+  endscript
+}
+
