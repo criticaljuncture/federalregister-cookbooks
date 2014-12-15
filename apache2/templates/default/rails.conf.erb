@@ -4,7 +4,7 @@
   DocumentRoot <%= node['app'][@vhost]['docroot'] %>
   RewriteEngine On
 
-  <IfModule passenger>
+  <IfModule passenger_module>
     RackEnv <%= node['rails']['environment'] %>
     RailsEnv <%= node['rails']['environment'] %>
   </IfModule>
