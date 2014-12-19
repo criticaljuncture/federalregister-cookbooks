@@ -36,13 +36,14 @@ node[:federalregister][:applications].each do |application_name|
     group repository_config['group']
     repository repository_config['url']
     revision repository_config['revision']
+    enable_submodules repository_config.fetch('enable_submodules') { false }
 
     action :sync
   end
 
-  if app_config['config_files']
-    app_config['config_files'].each do |filename|
-      template "#{[repository_config['directory'], app_config['config']['relative_path'], filename].join('/')}" do
+  if app_config['config']['files'].length > 0
+    app_config['config']['files'].each do |filename|
+      template "#{[repository_config['directory'], app_config['config']['relative_path'], filename].reject(&:empty?).compact.join('/')}" do
         source "#{filename}.erb"
         variables :config => app_config
         user repository_config['owner']
