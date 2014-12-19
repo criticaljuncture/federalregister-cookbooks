@@ -33,4 +33,15 @@ node['aws']['ebs']['volumes'].each do |vol|
 
     action vol['actions']
   end
+
+  if vol['backup']['perform']
+    template "etc/cron.d/#{vol['name']}-ebs-backup" do
+      source "cron/ebs_backup.erb"
+      variables description:  vol['backup'].fetch('description') { "ec2cs-#{node.chef_environment}-#{vol['name']}" },
+                log:          vol['backup'].fetch('log') { "/var/log/ebs-backup.log" },
+                mount_point:  vol['device'],
+                volume_id:    vol['volume_id']
+      mode 0644
+    end
+  end
 end
