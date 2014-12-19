@@ -1,6 +1,6 @@
 <VirtualHost *:<%= node['app'][@vhost]['port'] %>>
   ServerName <%= node['app'][@vhost]['fqdn'] %>
-  ServerAlias
+  ServerAlias <%= node['app'][@vhost]['aliases'].join(' ') %>
   DocumentRoot <%= node['app'][@vhost]['docroot'] %>
   RewriteEngine On
 
