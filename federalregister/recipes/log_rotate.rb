@@ -18,8 +18,18 @@
 
 include_recipe "s3cmd_federalregister"
 
+logrotate_config_path = "/etc/logrotate.d"
+
+node['federalregister']['logrotate']['remove'].each do |name|
+  file "#{logrotate_config_path}/#{name}" do
+    action :delete
+
+    only_if { File.exists?("#{logrotate_config_path}/#{name}") }
+  end
+end
+
 node['federalregister']['logrotate']['configs'].each do |config|
-  template "/etc/logrotate.d/#{config.fetch(:name)}" do
+  template "#{logrotate_config_path}/#{config.fetch(:name)}" do
     source config.fetch(:template)
     variables :s3cmd     => '/usr/bin/s3cmd',
               :bucket    => config.fetch(:bucket),
