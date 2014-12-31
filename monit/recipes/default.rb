@@ -20,6 +20,13 @@
 include_recipe "monit-ng::default"
 
 node['monit']['resque_workers'].each do |worker_config|
+  directory "#{worker_config['app_location']}/lib/scripts" do
+    user worker_config['user']
+    group worker_config['group']
+    recursive true
+    mode 0777
+  end
+
   worker_config['queue_count'].times do |i|
     name = "resque_worker_#{worker_config['name']}_#{i}"
     pidfile = "#{worker_config['app_location']}/#{worker_config['pidfile_location']}/#{name}.pid"
@@ -28,10 +35,23 @@ node['monit']['resque_workers'].each do |worker_config|
       check_type 'process'
       check_id pidfile
       group worker_config['monit_group']
-      start "/usr/bin/env HOME=/home/#{worker_config['user']} /bin/sh -l -c 'cd #{worker_config['app_location']}; nohup bundle exec rake environment resque:work RAILS_ENV=#{node['rails']['environment']} QUEUE=#{worker_config['queue']} INTERVAL=#{worker_config['resque_interval']} VERBOSE=1 PIDFILE=#{pidfile} >> #{worker_config['app_location']}/log/resque_worker_#{worker_config['name']}.log 2>&1'"
+      start "/usr/bin/env HOME=/home/deploy /bin/sh -l -c '/var/www/apps/federalregister-api-core/lib/scripts/#{name}.sh'"
       start_as "#{worker_config['user']} and gid #{worker_config['group']}"
       stop "/bin/sh -c 'kill -3 $(cat #{pidfile}) && rm -f #{pidfile}; exit 0;'"
       tests worker_config['tests']
+    end
+
+    file "#{worker_config['app_location']}/lib/scripts/#{name}.sh" do
+      content <<-sh
+#!/usr/bin/env bash
+source /usr/local/rvm/environments/ree-1.8.7-2012.02
+
+cd #{worker_config['app_location']}
+nohup #{worker_config['rvm_wrapper_path']}/bundle exec rake environment resque:work RAILS_ENV=#{node['rails']['environment']} QUEUE=#{worker_config['queue']} INTERVAL=#{worker_config['resque_interval']} VERBOSE=1 PIDFILE=#{pidfile} >> #{worker_config['app_location']}/log/resque_worker_#{worker_config['name']}.log 2>&1 &
+sh
+      mode 0775
+      user worker_config['user']
+      group worker_config['group']
     end
   end
 end
