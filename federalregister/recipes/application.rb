@@ -51,6 +51,23 @@ node[:federalregister][:applications].each do |application_name|
       end
     end
   end
+
+  if app_config['config']['permissions'] && app_config['config']['permissions'].length > 0
+    app_config['config']['permissions'].each do |config|
+      if FileTest.directory?(config['path'])
+        recursive = config.fetch('recursive') { false }
+        recursive = recursive ? "-R" : ""
+
+        execute "change permissions on #{config['path']}" do
+          command "chown #{recursive} #{config['user']}:#{config['group']} #{config['path']}"
+        end
+      else
+        execute "change permissions on #{config['path']}" do
+          command "chown #{config['user']}:#{config['group']} #{config['path']}"
+        end
+      end
+    end
+  end
 end
 
 # this is a requirement under our current version of ffi-hunspell gem
