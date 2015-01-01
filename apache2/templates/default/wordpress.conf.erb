@@ -25,7 +25,7 @@
   <Directory <%= node['app'][@vhost]['docroot'] %>/blog/wp-admin>
     AuthType Basic
     AuthName "Restricted Access"
-    AuthUserFile <%= node['apache2']['htpasswd_dir'] %>
+    AuthUserFile <%= node['apache2']['htpasswd_file'] %>
     Require user <%= @vhost_data_bag_item['http_basic']['username'] %>
   </Directory>
 
