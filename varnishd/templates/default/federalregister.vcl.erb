@@ -1,0 +1,289 @@
+C{
+  #include <stdlib.h>
+  #include <stdio.h>
+  #include <time.h>
+}C
+
+<% @api_core_configs.each do |config| %>
+backend <%= config['alias'] %> {
+  .host = "<%= config['hostname'] %>";
+  .port = "<%= config['port'] %>";
+  .probe = {
+    .url = "/status";
+    .interval = 5s;
+    .timeout = 1s;
+    .window = 5;
+    .threshold = 3;
+  }
+}
+
+backend <%= config['alias'] %>_status {
+  .host = "<%= config['hostname'] %>";
+  .port = "<%= config['port'] %>";
+}
+<% end %>
+
+director api_core_director round-robin {
+  <% @api_core_configs.each do |config| %>
+    { .backend = <%= config['alias'] %>; }
+  <% end %>
+}
+
+<% @web_configs.each do |config| %>
+backend <%= config['alias'] %> {
+  .host = "<%= config['hostname'] %>";
+  .port = "<%= config['port'] %>";
+  .probe = {
+    .url = "/my/status";
+    .interval = 5s;
+    .timeout = 1s;
+    .window = 5;
+    .threshold = 3;
+  }
+}
+<% end %>
+
+director web_director round-robin {
+  <% @web_configs.each do |config| %>
+    { .backend = <%= config['alias'] %>; }
+  <% end %>
+}
+
+
+backend blog_server {
+  .host = "blog.fr2.ec2.internal";
+  .port = "80";
+}
+
+backend iodocs_server {
+  .host = "iodocs.fr2.ec2.internal";
+  .port = "5678";
+}
+
+backend static_server {
+  .host = "static.fr2.ec2.internal";
+  .port = "8080";
+}
+
+sub vcl_recv {
+    # Rewrite top-level wordpress requests to /blog/
+    set req.url = regsub(
+        req.url,
+        "^/(learn|policy|layout/footer_page_list|layout/homepage_post_list|layout/navigation_page_list)",
+        "/blog/\1"
+    );
+
+    # Reject Non-RFC2616 or CONNECT or TRACE requests.
+    if (req.request != "GET" &&
+      req.request != "HEAD" &&
+      req.request != "PUT" &&
+      req.request != "POST" &&
+      req.request != "OPTIONS" &&
+      req.request != "DELETE") {
+        return (error);
+    }
+
+    # ab testing - check cookie to see if group has been assigned
+    # either use it or drop down to C to get a random group
+    # ensure group is passed along to app servers as a header
+    if (req.http.Cookie ~ "(^|;) ?ab_group=\d+(;|$)") {
+      if( req.http.Cookie ~ "ab_group=[0-9]+" ) {
+        set req.http.X-AB-Group = regsub( req.http.Cookie,    ".*ab_group=", "");
+        set req.http.X-AB-Group = regsub( req.http.X-AB-Group, ";.*", "");
+      }
+    } else {
+      C{
+        char buff[5];
+        sprintf(buff,"%d",rand()%10 != 0 ? 1 : 2);
+        VRT_SetHdr(sp, HDR_REQ, "\013X-AB-Group:", buff, vrt_magic_string_end);
+      }C
+
+      set req.http.X-Added-AB-Group = "1";
+
+      if (req.http.Cookie) {
+        set req.http.Cookie = req.http.Cookie ";";
+      } else {
+        set req.http.Cookie = "";
+      }
+      set req.http.Cookie = req.http.Cookie "ab_group=" req.http.X-AB-Group;
+    }
+
+
+    # Compression handled upstream; only want one in the cache
+    if (req.http.Accept-Encoding) {
+        remove req.http.Accept-Encoding;
+    }
+
+    # serve slightly stale content while a fresh version is fetched
+    # better user experience and no thread pile up on the app servers
+    set req.grace = 24h;
+
+    # set the backend server based on request (if multi-server stack)
+    if (req.url ~ "^/my/assets/") {
+      set req.backend = static_server;
+
+      # Fetch from cache unless explicitly skipping cache
+      if (req.http.Cookie ~ "skip_cache=<%= @skip_cache_key %>") {
+        return (pass);
+      } else {
+        return (lookup);
+      }
+
+    } else if (req.url ~ "^/my(/|$)") {
+      set req.backend = web_director;
+
+      if (req.url ~ "^/my/special/user_utils" && ( req.http.Cookie ~ "document_numbers" || req.http.Cookie ~ "_my_fr2_session") ) {
+        return(pass);
+      }
+    } else if (req.url ~ "^(/images|/javascripts|/flash|/stylesheets|/sitemap|/articles/html|/articles/page-images|/articles/text|/articles/xml|/public-inspection/raw_text|/regulations/html|/uploads)|/generated_files|/index/pdf") {
+      set req.backend = static_server;
+
+      # Fetch from cache unless explicitly skipping cache
+      if (req.http.Cookie ~ "skip_cache=<%= @skip_cache_key %>") {
+        return (pass);
+      } else {
+        return (lookup);
+      }
+
+    # logged in users must always pass
+    } else if( req.url ~ "^/blog/wp-(login|admin)" ) {
+        set req.backend = blog_server;
+        return (pass);
+        } else if (req.url ~ "^(/blog|/policy|/learn|/layout/footer_page_list|/layout/homepage_post_list|/layout/navigation_page_list)") {
+        set req.backend = blog_server;
+
+        # Don't cache wordpress pages if logged in to wp
+        if (req.http.Cookie ~ "wordpress_logged_in_" || req.http.Cookie ~ "comment_author_") {
+            return (pass);
+        }
+
+    } else if (req.url ~ "^/developers/api") {
+      set req.backend = iodocs_server;
+      set req.url = regsub(
+        req.url,
+        "^/developers/api",
+        ""
+      );
+      return (pass);
+
+    <% @api_core_configs.each_with_index do |config, index| %>
+    } else if (req.url ~ "^/status/<%= index + 1 %>") {
+      set req.backend = <%= config['alias'] %>_status;
+      set req.url = "/status";
+      return (pass);
+    <% end %>
+
+    } else {
+      set req.backend = api_core_director;
+    }
+
+
+    # NOT NEEDED WHEN USING A PROXY SERVER IN FRONT LIKE NGINX
+    # Add a unique header containing the client address
+    # remove req.http.X-Forwarded-For;
+    # set    req.http.X-Forwarded-For = client.ip;
+
+    # Pass POSTs etc directly on to the backend
+    if (req.request != "GET" && req.request != "HEAD") {
+        return (pass);
+    }
+
+    # Pass admin requests directly on to the backend
+    if (req.url ~ "^/admin/") {
+        return (pass);
+    }
+
+    # Prevent duplication of caches
+    set req.http.host = "<%= @site_hostname %>";
+
+    # Fetch from cache unless explicitly skipping cache
+    if (req.http.Cookie ~ "skip_cache=<%= @skip_cache_key %>") {
+      return (pass);
+    } else {
+      return (lookup);
+    }
+}
+
+sub vcl_fetch {
+    # Remove cache headers from going out to client; cache headers are being used for
+    # varnish, not browser/upstream caches.
+    # Actual browser/upstream cache is being set by the nginx proxy in front of varnish
+    unset beresp.http.Cache-Control;
+
+    # serve slightly stale content while a fresh version is fetched
+    # better user experience and no thread pile up on the app servers
+    set beresp.grace = 24h;
+
+    # Directly serve static content
+    if (req.url ~ "^/my/assets/") {
+        return(deliver);
+    } else if (req.url ~ "^(/images|/javascripts|/flash|/stylesheets|/sitemap|/articles/html|/articles/xml|/regulations/html)") {
+        return(deliver);
+    }
+    # ESI process the rest
+    else {
+        esi;
+    }
+
+    # Wordpress doesn't set these so we're doing it here to make sure it stays in the cache
+    if (req.url ~ "^(/blog|/policy|/learn|/layout/footer_page_list|/layout/homepage_post_list|/wp-|/layout/navigation_page_list|/layout/homepage_post_list)") {
+      set beresp.ttl = 24h;
+    }
+}
+
+# vcl_hash creates the key for varnish under which the object is stored. It is
+# possible to store the same url under 2 different keys, by making vcl_hash
+# create a different hash.
+sub vcl_hash {
+
+    # these 2 entries are the default ones used for vcl. Below we add our own.
+    set req.hash += req.url;
+    set req.hash += req.http.host;
+
+    # doing ab testing on specific paths
+    if (req.url ~ "^/layout/head_content" ) {
+      set req.hash += "ab_group";
+      set req.hash += req.http.X-AB-Group;
+    }
+
+
+    # Hash differently based on presence of javascript_enabled cookie.
+    if( req.url ~ "^/(articles|public-inspection)/search/header" && req.http.Cookie ~ "javascript_enabled=1" ) {
+        # add this fact to the hash
+        set req.hash += "javascript enabled";
+    }
+
+    # Hash differently based on presence of expect_logged_in cookie.
+    if( req.url ~ "^/my/special/navigation" && req.http.Cookie ~ "expect_signed_in=1" ) {
+        # add this fact to the hash
+        set req.hash += "user logged in";
+    }
+
+    return(hash);
+}
+
+sub vcl_error {
+    set obj.http.Content-Type = "text/html; charset=utf-8";
+
+    synthetic {"<!--"} obj.status " " obj.response {"-->"};
+    return(deliver);
+}
+
+sub vcl_deliver {
+  set resp.http.Etag = resp.http.Etag " abgroup=" req.http.X-AB-Group;
+
+  # make sure ab testing is part of the cookie on the way back out
+  if (req.http.X-Added-AB-Group) {
+    C{
+      time_t now;
+      time(&now);
+      now = now + 10*24*60*60;
+
+      char expires [30];
+      strftime( expires, 30, "%a, %d-%b-%Y %H:%M:%S GMT", localtime(&now));
+
+      VRT_count(sp, 57);
+      VRT_SetHdr(sp, HDR_RESP, "\013Set-Cookie:", "ab_group=", VRT_GetHdr(sp, HDR_REQ, "\013X-AB-Group:"), "; path=/; expires=", expires, vrt_magic_string_end);
+    }C
+  }
+}
