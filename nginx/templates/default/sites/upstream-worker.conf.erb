@@ -1,0 +1,4 @@
+upstream <%= @site['proxy']['name'] %> {
+  server <%= @site['proxy']['host'] %>:<%= @site['proxy']['port'] %> weight=<%=  @site['proxy']['weight'] %> max_fails=<%=  @site['proxy']['max_fails'] %> fail_timeout=<%=  @site['proxy']['fail_timeout'] %>;
+}
+
