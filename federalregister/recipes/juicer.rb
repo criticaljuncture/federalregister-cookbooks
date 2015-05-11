@@ -20,6 +20,7 @@ package "openjdk-7-jre-headless"
 
 execute "install closure compiler for juicer" do
   user "deploy"
+  group "deploy"
   command "bundle exec juicer install closure_compiler"
   cwd "/var/www/apps/federalregister-api-core"
 
