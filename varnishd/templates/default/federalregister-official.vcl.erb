@@ -140,7 +140,7 @@ sub vcl_recv {
     } else if (req.url ~ "^/api/") {
       set req.backend = api_core_director;
       return (lookup);
-    } else if (req.url ~ "^(/documents/(full_text|mods|tables|table_of_contents)/)") {
+    } else if (req.url ~ "^(/documents/(full_text|mods|tables|table_of_contents)/|/document_issues)") {
       set req.backend = static_server;
       return (pass);
     } else if (req.url ~ "^(/documents|/d/|/a/)") {
@@ -228,7 +228,7 @@ sub vcl_fetch {
     # Directly serve static content
     if (req.url ~ "^/my/assets/") {
         return(deliver);
-    } else if (req.url ~ "^(/images|/javascripts|/flash|/stylesheets|/sitemap|/assets|/documents/(table_of_contents|mods|tables)/|/regulations/html)") {
+    } else if (req.url ~ "^(/images|/javascripts|/flash|/stylesheets|/sitemap|/assets|/documents/(table_of_contents|mods|tables)/|/regulations/html|/document_issues)") {
         return(deliver);
     }
     # ESI process the rest
