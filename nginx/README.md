@@ -8,20 +8,7 @@ Ubuntu
 
 ## Attributes
 
-<table>
-  <tr>
-    <th>Key</th>
-    <th>Type</th>
-    <th>Description</th>
-    <th>Default</th>
-  </tr>
-  <tr>
-    <td><tt></tt></td>
-    <td></td>
-    <td></td>
-    <td><tt></tt></td>
-  </tr>
-</table>
+No attributes have been added
 
 ## Usage
 
