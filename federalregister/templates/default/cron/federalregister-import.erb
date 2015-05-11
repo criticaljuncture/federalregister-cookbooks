@@ -1,0 +1,41 @@
+# Managed by Chef
+# /etc/cron.d/federalregister-import: crontab fragment for
+# retrieving the xml data, etc from GPO
+
+# Import today's content
+# retries every 5 minutes from 4AM to 5PM EDT every day
+0,5,10,15,20,25,30,35,40,45,50,55 8-21 	* * *	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> data:daily 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/ofr_bulkdata_import.log
+
+# Find the matching regulations.gov URL for articles
+# runs every 60 minutes from 7AM EDT until 5PM M-F
+30 11-21 	* * 1-5	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:entries:import:regulations_dot_gov:only_missing 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/reg_gov_url_import.log
+
+# Find the matching regulations.gov URL for articles tardily added to regs.gov
+# runs every morning once
+0 6 	* * *	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:entries:import:regulations_dot_gov:tardy 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/reg_gov_url_import_tardy.log
+
+# Download docket data
+# runs every morning once
+30 8 	* * *	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:dockets:import 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/docket_import.log
+
+# Confirm URLs and openness of comments that have a valid comment URL
+# runs every day twice
+0 5,12 	* * *	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:entries:import:regulations_dot_gov:open_comments 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/reg_gov_url_import_open_comments.log
+
+# Expire pages warning of late content at 9AM
+# runs at 9AM EDT M-F
+0 13,14 	* * 1-5	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> varnish:expire:pages_warning_of_late_content 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/late_page_expiration.log
+
+# Reindex the entire content (collapsing delta indexes back into main index)
+# runs once a week on Sunday at 3AM EDT
+0 7 	* * 7	<%= @app_config['repository']['owner'] %> /usr/local/bin/indexer --config <%= @app_config['repository']['directory'] %>/config/<%= node.chef_environment %>.sphinx.conf --rotate --all 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/weekly_sphinx_reindex.log
+
+# Import public inspection documents
+# runs every minute from 7AM EDT until 7PM Monday-Saturday
+* 11-23         * * 1-6	<%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:public_inspection:import_and_deliver 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/public_inspection_import.log
+
+# Purge revoked PI documents at 5:15PM
+# # runs at 5:15PM EDT M-F
+15 22,23 	* * 1-5 <%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:public_inspection:purge_revoked_documents 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/public_inspection_import.log
+
+

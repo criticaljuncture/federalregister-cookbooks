@@ -1,0 +1,12 @@
+# Managed by Chef
+# /etc/cron.d/regulations-dot-gov-comment: crontab fragment for
+# refreshing the comment form cache from regulations.gov
+# and notifying users
+
+# Refresh the regulations.gov comment form cache
+# runs every 6 hours
+0 0,6,12,18 * * * <%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> regulations_dot_gov:warm_comment_form_cache 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/regulations_dot_gov_comment_cache.log
+
+# Check for newly posted comments and notify users
+# runs once a day at 6PM EDT
+0 22 * * * <%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> regulations_dot_gov:notify_comment_publication 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/regulations_dot_gov_comments_posted.log
