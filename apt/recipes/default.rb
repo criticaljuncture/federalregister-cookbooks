@@ -19,12 +19,14 @@
 
 include_recipe "apt"
 
-node['apt']['repositories'].each do |name, config|
-  apt_repository name do
-    uri          config['uri']
-    distribution node['lsb']['codename']
+if node['apt']['repositories']
+  node['apt']['repositories'].each do |name, config|
+    apt_repository name do
+      uri          config['uri']
+      distribution node['lsb']['codename']
 
-    notifies :run, "execute[apt-get update]", :immediately
+      notifies :run, "execute[apt-get update]", :immediately
+    end
   end
 end
 
