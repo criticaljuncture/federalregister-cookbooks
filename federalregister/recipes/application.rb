@@ -19,6 +19,8 @@
 require 'yaml'
 
 node[:federalregister][:applications].each do |application_name|
+  puts "Adding application #{application_name}"
+
   app_config = data_bag_item('applications', application_name)[node.chef_environment]
 
   repository_config = app_config['repository']
@@ -39,10 +41,17 @@ node[:federalregister][:applications].each do |application_name|
     enable_submodules repository_config.fetch('enable_submodules') { false }
 
     action :sync
+    #not_if { FileTest.directory?("#{repository_config['directory']}/.git") }
   end
 
   if app_config['config']['files'].length > 0
     app_config['config']['files'].each do |filename|
+      directory "#{[repository_config['directory'], app_config['config']['relative_path']].reject(&:empty?).compact.join('/')}" do
+        user repository_config['owner']
+        group repository_config['group']
+        recursive true
+      end
+
       template "#{[repository_config['directory'], app_config['config']['relative_path'], filename].reject(&:empty?).compact.join('/')}" do
         source "#{filename}.erb"
         variables :config => app_config
