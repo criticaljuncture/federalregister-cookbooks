@@ -134,23 +134,11 @@ sub vcl_recv {
       if (req.url ~ "^/my/special/user_utils" && ( req.http.Cookie ~ "document_numbers" || req.http.Cookie ~ "_my_fr2_session") ) {
         return(pass);
       }
-    } else if (req.url ~ "^(/special/header|/special/shared_assets|/special/my_fr_assets|/special/fr2_assets|/special/user_utils|/special/footer|/special/site_notifications|/special/navigation)") {
-      set req.backend = web_director;
-      return(pass);
     } else if (req.url ~ "^/api/") {
       set req.backend = api_core_director;
       return (lookup);
     } else if (req.url ~ "^(/documents/(full_text|mods|tables|table_of_contents)/|/document_issues)") {
       set req.backend = static_server;
-      return (pass);
-    } else if (req.url ~ "^(/documents|/d/|/a/)") {
-      set req.backend = web_director;
-      return (pass);
-    } else if (req.url ~ "^(/public-inspection|/reader-aids)") {
-      set req.backend = web_director;
-      return (pass);
-    } else if (req.url ~ "^(/esi)") {
-      set req.backend = web_director;
       return (pass);
     } else if( req.url ~ "^/blog/wp-(login|admin)" ) {
         set req.backend = blog_server;
@@ -176,14 +164,9 @@ sub vcl_recv {
       set req.url = "/status";
       return (pass);
     <% end %>
-    } else if (req.url ~ "^/(topics|agencies)") {
-      set req.backend = web_director;
-      return(pass);
-    } else if (req.url == "/") {
-      set req.backend = web_director;
-      return(pass);
     } else {
-      set req.backend = api_core_director;
+      set req.backend = web_director;
+      return (lookup);
     }
 
 
