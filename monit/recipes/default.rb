@@ -44,7 +44,7 @@ node['monit']['resque_workers'].each do |worker_config|
     file "#{worker_config['app_location']}/lib/scripts/#{name}.sh" do
       content <<-sh
 #!/usr/bin/env bash
-source /usr/local/rvm/environments/ree-1.8.7-2012.02
+source /usr/local/rvm/environments/#{node['rvm']['default_ruby']}
 
 cd #{worker_config['app_location']}
 nohup #{worker_config['rvm_wrapper_path']}/bundle exec rake environment resque:work RAILS_ENV=#{node['rails']['environment']} QUEUE=#{worker_config['queue']} INTERVAL=#{worker_config['resque_interval']} VERBOSE=1 PIDFILE=#{pidfile} >> #{worker_config['app_location']}/log/resque_worker_#{worker_config['name']}.log 2>&1 &

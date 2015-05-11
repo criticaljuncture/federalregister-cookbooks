@@ -7,6 +7,9 @@
   <IfModule passenger_module>
     RackEnv <%= node['rails']['environment'] %>
     RailsEnv <%= node['rails']['environment'] %>
+  <% if node['app'][@vhost]['passenger'] %>
+    PassengerRuby <%= node['app'][@vhost]['passenger']['ruby_bin'] %>
+  <% end %>
   </IfModule>
 
   <Directory <%= node['app'][@vhost]['docroot'] %>>
