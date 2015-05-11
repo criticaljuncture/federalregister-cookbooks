@@ -1,0 +1,52 @@
+server {
+  listen <%= @site['listen_port'] %>;
+  server_name <%= @site['hostnames'].join(' ') %>;
+
+  if ( $host = 'federalregister.gov' ) {
+    rewrite ^(.*)$ http://www.federalregister.gov$1; # $1 contains '/foo', not 'mydomain.com/foo'
+  }
+
+  access_log <%= node['nginx']['log_dir'] %>/<%= @site['name'] %>/access.log;
+  error_log <%= node['nginx']['log_dir'] %>/<%= @site['name'] %>/error.log;
+
+  <% @site['location_blocks'].each do |block| -%>
+    location <%= block['location'] %> {
+      <% if block['rewrites'] -%>
+        <% block['rewrites'].each do |config| -%>
+          rewrite <%= config['pattern'] %> <%= config['location'] %> <%= config['type'] %>;
+        <% end -%>
+      <% end -%>
+
+      <% if block['doc_root'] -%>
+        # doc root
+        root <%= block['doc_root'] %>;
+      <% end -%>
+
+      <% if block['expires'] -%>
+        # set cache control
+        expires <%= block['expires'] %>;
+      <% end -%>
+
+      <% if block['client_max_body_size'] -%>
+        client_max_body_size <%= block['client_max_body_size'] %>;
+      <% end -%>
+
+      <% if block['proxy'] -%>
+        proxy_pass             http://varnish;
+        proxy_redirect         http://varnish/ http://$host:$server_port/;
+        proxy_set_header       Host $host;
+        proxy_set_header       X-Real-IP $remote_addr;
+        proxy_set_header       X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header       X-Client-Verify SUCCESS;
+        proxy_set_header       X-SSL-Subject $ssl_client_s_dn;
+        proxy_set_header       X-SSL-Issuer  $ssl_client_i_dn;
+        proxy_intercept_errors on;
+      <% end -%>
+    }
+  <% end -%>
+
+  error_page 502 503 /502_503_proxy.html;
+  location = /502_503_proxy.html {
+    root <%= @site['errors_doc_root'] %>;
+  }
+}
