@@ -23,9 +23,23 @@ require 'chef/rewind'
 include_recipe 'nginx::default'
 
 node['nginx']['sites'].each do |site|
+  if site['ssl'] && site['ssl']['dhparam']
+    # Pre-generate a configurable bit random parameter (at least
+    # 2048 is recommended) for DH elliptic curves. If not created and
+    # specified, default is only 1024 bits.
+    dhparam_filepath = "#{site['ssl']['dhparam']['path']}/dhparam#{site['ssl']['dhparam']['size']}.pem"
+
+    bash "create missing dhparam" do
+      code "openssl dhparam -outform pem -out #{dhparam_filepath} #{site['ssl']['dhparam']['size']}"
+      not_if { File.exists? dhparam_filepath }
+    end
+  end
+
   template "#{node['nginx']['dir']}/sites-available/#{site['name']}.conf" do
     source "sites/#{site['name']}.conf.erb"
-    variables site: site
+    variables site: site,
+              dhparam_filepath: dhparam_filepath
+    notifies :reload, 'service[nginx]', :delayed
   end
 
   directory "#{node['nginx']['log_dir']}/#{site['name']}"
