@@ -140,6 +140,9 @@ sub vcl_recv {
     } else if (req.url ~ "^(/documents/(full_text|mods|tables|table_of_contents)/|/document_issues/(json|xml)/)") {
       set req.backend = static_server;
       return (pass);
+    } else if (req.url ~ "^(/layout/head_content|/stylesheets/|/javascripts/)") {
+      set req.backend = api_core_director;
+      return (lookup);
     } else if( req.url ~ "^/blog/wp-(login|admin)" ) {
         set req.backend = blog_server;
         return (pass);
