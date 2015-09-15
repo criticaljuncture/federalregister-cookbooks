@@ -1,0 +1,12 @@
+# Managed by Chef
+# /etc/cron.d/gpo_image_importer: crontab fragment for
+# downloading and packaging images from the GPO FTP server
+# for use by FederalRegister.gov
+
+# Download image from FTP and place in private bucket on S3
+# runs every 1 minute
+* * * * * <%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:gpo_images:import_eps 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/gpo_eps_importer.log
+
+# Enqueue background jobs to process any images that are new
+# runs every 1 minute
+* * * * * <%= @app_config['repository']['owner'] %>  cd <%= @app_config['repository']['directory'] %> && PATH=<%= node['rvm']['default_ruby_wrapper_path'] %>:$PATH bundle exec rake RAILS_ENV=<%= node.chef_environment %> content:gpo_images:convert_eps 2>&1 | sed "s/^/[$(date)] /" >> <%= @app_config['repository']['directory'] %>/log/gpo_eps_converter.log
